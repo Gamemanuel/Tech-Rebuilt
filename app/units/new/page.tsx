@@ -15,6 +15,7 @@ export default function NewUnitPage() {
     model: "",
     generation: "",
     serial_number: "",
+    special_number: "",
     condition_grade: "",
     purchase_price: "",
   });
@@ -37,6 +38,12 @@ export default function NewUnitPage() {
       return;
     }
 
+    const now = new Date();
+    const dateString = `${String(now.getDate()).padStart(2, "0")}.${String(now.getMonth() + 1).padStart(2, "0")}.${now.getFullYear()}`;
+    const specialNumber = (form.special_number || "").trim();
+    const { count } = await supabase.from("units").select("id", { count: "exact", head: true });
+    const nextSpecialNumber = specialNumber || `${(count ?? 0) + 1}.${dateString}`;
+
     setSaving(true);
     setError(null);
 
@@ -44,6 +51,7 @@ export default function NewUnitPage() {
       model: form.model.trim(),
       generation: form.generation.trim() || null,
       serial_number: form.serial_number.trim() || null,
+      special_number: nextSpecialNumber || null,
       condition_grade: form.condition_grade.trim() || null,
       purchase_price_cents: priceNum ? Math.round(priceNum * 100) : 0,
       status: "sourced",
@@ -83,6 +91,16 @@ export default function NewUnitPage() {
             <div className="space-y-1.5">
               <Label htmlFor="serial">Serial number</Label>
               <Input id="serial" value={form.serial_number} onChange={(e) => update("serial_number", e.target.value)} />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="special-number">Special number</Label>
+              <Input
+                id="special-number"
+                placeholder="1.22.08.2026"
+                value={form.special_number}
+                onChange={(e) => update("special_number", e.target.value)}
+              />
+              <p className="text-xs text-muted-foreground">Blank = auto-generated index.day.month.year.</p>
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="condition">Condition grade</Label>

@@ -43,6 +43,7 @@ export interface Unit {
   model: string;
   generation: string | null;
   serial_number: string | null;
+  special_number: string | null;
   condition_grade: string | null;
   vendor_id: string | null;
   purchase_price_cents: number;
@@ -80,6 +81,13 @@ export interface RepairPart {
   cost_at_time_cents: number;
 }
 
+export type ItemCategory = "part" | "accessory";
+
+export const ITEM_CATEGORY_LABELS: Record<ItemCategory, string> = {
+  part: "Part",
+  accessory: "Accessory",
+};
+
 export interface Receipt {
   id: string;
   vendor_id: string | null;
@@ -90,6 +98,39 @@ export interface Receipt {
   receipt_date: string | null;
   category: string | null;
   description: string | null;
+  created_at: string;
+}
+
+export interface ReceiptItem {
+  id: string;
+  receipt_id: string | null;
+  name: string;
+  category: ItemCategory;
+  quantity: number;
+  cost_cents: number;
+  price_cents: number;
+  notes: string | null;
+  created_at: string;
+}
+
+export interface UnitItem {
+  id: string;
+  unit_id: string;
+  receipt_item_id: string;
+  quantity: number;
+  cost_cents: number;
+  price_cents: number;
+  notes: string | null;
+  created_at: string;
+}
+
+export interface LaborEntry {
+  id: string;
+  unit_id: string;
+  unit_item_id: string | null;
+  hours: number;
+  rate_cents: number;
+  notes: string | null;
   created_at: string;
 }
 
@@ -106,5 +147,7 @@ export interface Sale {
 // Convenience shape for a unit with everything needed to compute margin
 export interface UnitWithFinancials extends Unit {
   repairs: (Repair & { repair_parts: RepairPart[] })[];
+  unit_items: (UnitItem & { receipt_item: ReceiptItem })[];
+  labor_entries: LaborEntry[];
   sale: Sale | null;
 }

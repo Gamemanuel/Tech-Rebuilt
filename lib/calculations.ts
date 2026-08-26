@@ -9,12 +9,18 @@ import { UnitWithFinancials } from "./types";
 export interface UnitCostBreakdown {
   purchaseCents: number;
   partsCents: number;
+  itemCents: number;
   laborCents: number;
+  loggedLaborCents: number;
   totalCostCents: number;
 }
 
 export function computeUnitCost(unit: UnitWithFinancials): UnitCostBreakdown {
-  const partsCents = unit.repairs.reduce((sum, repair) => {
+  const repairs = unit.repairs ?? [];
+  const unitItems = unit.unit_items ?? [];
+  const laborEntries = unit.labor_entries ?? [];
+
+  const partsCents = repairs.reduce((sum, repair) => {
     const repairParts = repair.repair_parts.reduce(
       (s, rp) => s + rp.cost_at_time_cents * rp.qty_used,
       0
@@ -22,8 +28,15 @@ export function computeUnitCost(unit: UnitWithFinancials): UnitCostBreakdown {
     return sum + repairParts;
   }, 0);
 
-  const laborCents = unit.repairs.reduce(
+  const itemCents = unitItems.reduce((sum, item) => sum + item.cost_cents * item.quantity, 0);
+
+  const laborCents = repairs.reduce(
     (sum, repair) => sum + Math.round(repair.labor_hours * repair.labor_rate_cents),
+    0
+  );
+
+  const laborLogCents = laborEntries.reduce(
+    (sum, entry) => sum + Math.round(entry.hours * entry.rate_cents),
     0
   );
 
@@ -32,8 +45,10 @@ export function computeUnitCost(unit: UnitWithFinancials): UnitCostBreakdown {
   return {
     purchaseCents,
     partsCents,
+    itemCents,
     laborCents,
-    totalCostCents: purchaseCents + partsCents + laborCents,
+    loggedLaborCents: laborLogCents,
+    totalCostCents: purchaseCents + partsCents + itemCents + laborCents + laborLogCents,
   };
 }
 

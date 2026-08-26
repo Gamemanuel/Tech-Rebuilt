@@ -6,9 +6,10 @@ import { formatCurrency } from "@/lib/utils";
 import { daysInCurrentStage } from "@/lib/calculations";
 import { Unit } from "@/lib/types";
 
-export function UnitCard({ unit }: { unit: Unit }) {
+export function UnitCard({ unit, totalCostCents }: { unit: Unit; totalCostCents?: number }) {
   const days = daysInCurrentStage(unit.current_stage_since);
   const stale = days >= 10;
+  const displayCost = totalCostCents ?? unit.purchase_price_cents;
 
   return (
     <Link
@@ -18,9 +19,14 @@ export function UnitCard({ unit }: { unit: Unit }) {
       <div className="flex items-start justify-between gap-2">
         <div>
           <p className="text-sm font-medium">{unit.model}</p>
-          {unit.serial_number && (
-            <p className="font-mono text-xs text-muted-foreground">{unit.serial_number}</p>
-          )}
+          <div className="space-y-0.5">
+            {unit.serial_number && (
+              <p className="font-mono text-xs text-muted-foreground">{unit.serial_number}</p>
+            )}
+            {unit.special_number && (
+              <p className="font-mono text-[10px] text-muted-foreground">{unit.special_number}</p>
+            )}
+          </div>
         </div>
         {unit.condition_grade && (
           <Badge variant="secondary" className="shrink-0">
@@ -30,7 +36,7 @@ export function UnitCard({ unit }: { unit: Unit }) {
       </div>
       <div className="mt-2 flex items-center justify-between text-xs">
         <span className="font-mono text-muted-foreground">
-          {formatCurrency(unit.purchase_price_cents)} in
+          {formatCurrency(displayCost)} sum
         </span>
         <span className={stale ? "text-destructive" : "text-muted-foreground"}>
           {days}d in stage

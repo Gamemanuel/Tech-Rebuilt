@@ -31,14 +31,14 @@ export function ThemeToggle() {
   }
 
   return (
-      <button
-          type="button"
-          onClick={toggleTheme}
-          className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-          aria-label={ready ? `Switch to ${theme === "dark" ? "light" : "dark"} mode` : "Toggle theme"}
-      >
-        {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-        {ready ? (theme === "dark" ? "Light mode" : "Dark mode") : "Toggle theme"}
-      </button>
+    <button
+      type="button"
+      onClick={toggleTheme}
+      className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+      aria-label={ready ? `Switch to ${theme === "dark" ? "light" : "dark"} mode` : "Toggle theme"}
+    >
+      {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+      {ready ? (theme === "dark" ? "Light mode" : "Dark mode") : "Toggle theme"}
+    </button>
   );
 }

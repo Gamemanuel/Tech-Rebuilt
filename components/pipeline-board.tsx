@@ -3,7 +3,8 @@
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { UnitCard } from "@/components/unit-card";
-import { PIPELINE_STAGES, UNIT_STATUS_LABELS, Unit, UnitStatus } from "@/lib/types";
+import { PIPELINE_STAGES, UNIT_STATUS_LABELS, UnitWithFinancials } from "@/lib/types";
+import { computeUnitCost } from "@/lib/calculations";
 import { cn } from "@/lib/utils";
 
 /**
@@ -11,11 +12,11 @@ import { cn } from "@/lib/utils";
  * dependency list small. Swap in @hello-pangea/dnd later if you want
  * actual dragging between columns.
  */
-export function PipelineBoard({ initialUnits }: { initialUnits: Unit[] }) {
+export function PipelineBoard({ initialUnits }: { initialUnits: UnitWithFinancials[] }) {
   const [units, setUnits] = useState(initialUnits);
   const supabase = createClient();
 
-  async function advanceUnit(unit: Unit) {
+  async function advanceUnit(unit: UnitWithFinancials) {
     const idx = PIPELINE_STAGES.indexOf(unit.status);
     if (idx === -1 || idx === PIPELINE_STAGES.length - 1) return;
     const nextStatus = PIPELINE_STAGES[idx + 1];
@@ -24,7 +25,6 @@ export function PipelineBoard({ initialUnits }: { initialUnits: Unit[] }) {
 
     const { error } = await supabase.from("units").update({ status: nextStatus }).eq("id", unit.id);
     if (error) {
-      // Revert on failure
       setUnits((prev) => prev.map((u) => (u.id === unit.id ? { ...u, status: unit.status } : u)));
     }
   }
@@ -41,10 +41,10 @@ export function PipelineBoard({ initialUnits }: { initialUnits: Unit[] }) {
               </h3>
               <span className="font-mono text-xs text-muted-foreground">{stageUnits.length}</span>
             </div>
-            <div className="flex flex-col gap-2 min-h-[80px]">
+            <div className="flex min-h-[80px] flex-col gap-2">
               {stageUnits.map((unit) => (
                 <div key={unit.id} className="group relative">
-                  <UnitCard unit={unit} />
+                  <UnitCard unit={unit} totalCostCents={computeUnitCost(unit).totalCostCents} />
                   {stage !== "sold" && (
                     <button
                       onClick={() => advanceUnit(unit)}

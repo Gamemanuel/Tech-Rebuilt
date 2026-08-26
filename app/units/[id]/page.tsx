@@ -5,23 +5,23 @@ import { Badge } from "@/components/ui/badge";
 import { MarkSoldForm } from "@/components/mark-sold-form";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { computeUnitCost, computeMargin } from "@/lib/calculations";
-import { UNIT_STATUS_LABELS, UnitWithFinancials } from "@/lib/types";
+import { UNIT_STATUS_LABELS, Unit, UnitWithFinancials } from "@/lib/types";
+import { UnitItemManager } from "@/components/unit-item-manager";
+import { EditPurchasePriceForm } from "@/components/edit-purchase-price-form";
+import { loadUnitsWithFinancials } from "@/lib/financials";
 
 export default async function UnitDetailPage({ params }: { params: { id: string } }) {
   const supabase = createClient();
 
   const { data: unit, error } = await supabase
     .from("units")
-    .select(`*, repairs(*, repair_parts(*)), sale:sales(*), vendor:vendors(name)`)
+    .select(`*, vendor:vendors(name)`)
     .eq("id", params.id)
     .single();
 
   if (error || !unit) notFound();
 
-  const withFinancials: UnitWithFinancials = {
-    ...unit,
-    sale: Array.isArray(unit.sale) ? unit.sale[0] ?? null : unit.sale,
-  };
+  const [withFinancials] = await loadUnitsWithFinancials(supabase, [unit as Unit]);
 
   const cost = computeUnitCost(withFinancials);
   const margin = computeMargin(withFinancials);
@@ -34,6 +34,12 @@ export default async function UnitDetailPage({ params }: { params: { id: string 
           <p className="text-sm text-muted-foreground">
             {unit.generation && `${unit.generation} · `}
             {unit.serial_number && <span className="font-mono">{unit.serial_number}</span>}
+            {unit.special_number && (
+              <span className="font-mono">
+                {unit.serial_number ? " · " : ""}
+                {unit.special_number}
+              </span>
+            )}
           </p>
         </div>
         <Badge>{UNIT_STATUS_LABELS[unit.status as keyof typeof UNIT_STATUS_LABELS]}</Badge>
@@ -46,7 +52,9 @@ export default async function UnitDetailPage({ params }: { params: { id: string 
         <CardContent className="space-y-2 text-sm">
           <Row label="Purchase price" value={formatCurrency(cost.purchaseCents)} />
           <Row label="Parts used" value={formatCurrency(cost.partsCents)} />
+          <Row label="Itemized listings" value={formatCurrency(cost.itemCents)} />
           <Row label="Labor" value={formatCurrency(cost.laborCents)} />
+          <Row label="Logged labor" value={formatCurrency(cost.loggedLaborCents)} />
           <div className="border-t border-border pt-2">
             <Row label="Total cost" value={formatCurrency(cost.totalCostCents)} bold />
           </div>
@@ -56,6 +64,15 @@ export default async function UnitDetailPage({ params }: { params: { id: string 
               {unit.vendor?.name ? ` from ${unit.vendor.name}` : ""}
             </p>
           )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-sm">Purchase price</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <EditPurchasePriceForm unitId={unit.id} initialPurchasePriceCents={unit.purchase_price_cents} />
         </CardContent>
       </Card>
 
@@ -90,13 +107,19 @@ export default async function UnitDetailPage({ params }: { params: { id: string 
         </Card>
       )}
 
-      {unit.repairs?.length > 0 && (
+      <UnitItemManager
+        unitId={unit.id}
+        initialItems={withFinancials.unit_items}
+        initialLaborEntries={withFinancials.labor_entries}
+      />
+
+      {withFinancials.repairs?.length > 0 && (
         <Card>
           <CardHeader>
             <CardTitle className="text-sm">Repair history</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            {unit.repairs.map((repair: any) => (
+            {withFinancials.repairs.map((repair: any) => (
               <div key={repair.id} className="rounded-md border border-border p-3 text-sm">
                 <div className="flex justify-between">
                   <span>{formatDate(repair.started_at)}</span>

@@ -2,19 +2,13 @@ import { createClient } from "@/lib/supabase/server";
 import { StatCard } from "@/components/stat-card";
 import { formatCurrency } from "@/lib/utils";
 import { computeMargin, computeUnitCost } from "@/lib/calculations";
-import { UnitWithFinancials } from "@/lib/types";
+import { Unit } from "@/lib/types";
+import { loadUnitsWithFinancials } from "@/lib/financials";
 
 export default async function DashboardPage() {
   const supabase = createClient();
 
-  // Pull every unit with its repairs/parts/sale so we can compute margins
-  // in JS rather than a giant SQL aggregate. Fine at hundreds-of-units scale;
-  // move this into a Postgres view if your catalog grows much larger.
-  const { data: units, error } = await supabase
-    .from("units")
-    .select(
-      `*, repairs(*, repair_parts(*)), sale:sales(*)`
-    );
+  const { data: units, error } = await supabase.from("units").select("*");
 
   if (error) {
     return (
@@ -28,10 +22,7 @@ export default async function DashboardPage() {
     );
   }
 
-  const allUnits = (units ?? []).map((u: any) => ({
-    ...u,
-    sale: Array.isArray(u.sale) ? u.sale[0] ?? null : u.sale,
-  })) as UnitWithFinancials[];
+  const allUnits = await loadUnitsWithFinancials(supabase, (units ?? []) as Unit[]);
 
   const soldUnits = allUnits.filter((u) => u.sale);
   const inProgress = allUnits.filter((u) => !u.sale && u.status !== "parted_out");

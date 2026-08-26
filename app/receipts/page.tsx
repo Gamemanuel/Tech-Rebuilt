@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { ReceiptItemLibrary } from "@/components/receipt-item-library";
 
 interface CsvRow {
   date?: string;
@@ -17,11 +18,11 @@ interface CsvRow {
 
 export default function ReceiptsPage() {
   return (
-    <div className="max-w-2xl space-y-6">
+    <div className="max-w-4xl space-y-6">
       <div>
         <h1 className="text-xl font-medium">Receipts</h1>
         <p className="text-sm text-muted-foreground">
-          Import a bank/card export as CSV, or upload a photo of a paper receipt.
+          Import a bank/card export as CSV, or upload a photo of a paper receipt. Then break the receipt into reusable items.
         </p>
       </div>
 
@@ -37,6 +38,8 @@ export default function ReceiptsPage() {
           <ImageImport />
         </TabsContent>
       </Tabs>
+
+      <ReceiptItemLibrary />
     </div>
   );
 }

@@ -2,14 +2,16 @@ import type { Metadata } from "next";
 import { Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { NavSidebar } from "@/components/nav-sidebar";
-import { ThemeToggle } from "@/components/theme-toggle";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
 const mono = JetBrains_Mono({ subsets: ["latin"], variable: "--font-mono" });
 
 export const metadata: Metadata = {
-  title: "Refurb Tracker",
+  title: "Tech Rebuilt",
   description: "Inventory, repairs, and margins for refurbished game systems",
+  icons: {
+    icon: "/logo.png",
+  },
 };
 
 export default function RootLayout({
@@ -26,13 +28,14 @@ export default function RootLayout({
               '(function(){try{var t=localStorage.getItem("theme");if(!t){t=window.matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light";}document.documentElement.classList.toggle("dark",t==="dark");}catch(e){}})();',
           }}
         />
-        <div className="mx-auto flex min-h-screen w-full max-w-[1400px] gap-4 p-3 md:p-5">
+        {/* No outer max-width/padding/border here on purpose — sidebar and
+            main content both run flush to the viewport edges. */}
+        <div className="flex min-h-screen w-full">
           <NavSidebar />
-          <main className="relative flex-1 rounded-[calc(var(--radius)+0.35rem)] border border-border/70 bg-card/75 p-6 shadow-[0_15px_45px_hsl(var(--foreground)/0.08)] backdrop-blur-sm md:p-8">
-            <div className="absolute right-4 top-4">
-              <ThemeToggle />
+          <main className="min-w-0 flex-1 bg-background">
+            <div className="mx-auto w-full max-w-6xl px-6 py-8 md:px-10 md:py-10">
+              {children}
             </div>
-            <div className="mx-auto w-full max-w-6xl pt-10 md:pt-2">{children}</div>
           </main>
         </div>
       </body>

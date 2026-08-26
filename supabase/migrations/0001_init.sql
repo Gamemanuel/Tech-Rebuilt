@@ -5,20 +5,28 @@
 
 create extension if not exists "pgcrypto";
 
-create type unit_status as enum (
-  'sourced',
-  'intake',
-  'in_repair',
-  'qc_testing',
-  'listed',
-  'sold',
-  'parted_out'
-);
+do $$ begin
+  create type unit_status as enum (
+    'sourced',
+    'intake',
+    'in_repair',
+    'qc_testing',
+    'listed',
+    'sold',
+    'parted_out'
+  );
+exception
+  when duplicate_object then null;
+end $$;
 
-create type receipt_source as enum ('csv', 'image', 'manual');
+do $$ begin
+  create type receipt_source as enum ('csv', 'image', 'manual');
+exception
+  when duplicate_object then null;
+end $$;
 
 -- Where units and expenses come from
-create table vendors (
+create table if not exists vendors (
   id uuid primary key default gen_random_uuid(),
   name text not null,
   type text,
@@ -27,7 +35,7 @@ create table vendors (
 );
 
 -- One row per physical console
-create table units (
+create table if not exists units (
   id uuid primary key default gen_random_uuid(),
   model text not null,
   generation text,
@@ -42,7 +50,7 @@ create table units (
   created_at timestamptz not null default now()
 );
 
-create index units_status_idx on units(status);
+create index if not exists units_status_idx on units(status);
 
 -- Bump current_stage_since automatically whenever status changes,
 -- so "days in current stage" is always accurate without extra app logic.
@@ -56,12 +64,13 @@ begin
 end;
 $$ language plpgsql;
 
+drop trigger if exists units_stage_timestamp on units;
 create trigger units_stage_timestamp
   before update on units
   for each row execute function touch_stage_timestamp();
 
 -- Parts inventory
-create table parts (
+create table if not exists parts (
   id uuid primary key default gen_random_uuid(),
   name text not null,
   sku text,
@@ -71,7 +80,7 @@ create table parts (
 );
 
 -- A repair job on a unit (can span multiple parts)
-create table repairs (
+create table if not exists repairs (
   id uuid primary key default gen_random_uuid(),
   unit_id uuid not null references units(id) on delete cascade,
   started_at timestamptz not null default now(),
@@ -81,12 +90,12 @@ create table repairs (
   notes text
 );
 
-create index repairs_unit_id_idx on repairs(unit_id);
+create index if not exists repairs_unit_id_idx on repairs(unit_id);
 
 -- Parts consumed by a specific repair. cost_at_time_cents is a snapshot
 -- of the part's cost when used, so later price changes don't retroactively
 -- change historical margins.
-create table repair_parts (
+create table if not exists repair_parts (
   id uuid primary key default gen_random_uuid(),
   repair_id uuid not null references repairs(id) on delete cascade,
   part_id uuid not null references parts(id) on delete restrict,
@@ -95,7 +104,7 @@ create table repair_parts (
 );
 
 -- Receipts imported via CSV, photographed, or entered manually
-create table receipts (
+create table if not exists receipts (
   id uuid primary key default gen_random_uuid(),
   vendor_id uuid references vendors(id) on delete set null,
   unit_id uuid references units(id) on delete set null,
@@ -108,10 +117,10 @@ create table receipts (
   created_at timestamptz not null default now()
 );
 
-create index receipts_unit_id_idx on receipts(unit_id);
+create index if not exists receipts_unit_id_idx on receipts(unit_id);
 
 -- One sale per unit (one-to-one; a unit sells once)
-create table sales (
+create table if not exists sales (
   id uuid primary key default gen_random_uuid(),
   unit_id uuid not null unique references units(id) on delete cascade,
   channel text not null,
@@ -130,25 +139,32 @@ on conflict (id) do nothing;
 
 -- Row Level Security: start locked down, then open up for authenticated
 -- users. Tighten further (e.g. per-user ownership) once you add auth.
-alter table vendors enable row level security;
-alter table units enable row level security;
-alter table parts enable row level security;
-alter table repairs enable row level security;
-alter table repair_parts enable row level security;
-alter table receipts enable row level security;
-alter table sales enable row level security;
+alter table if exists vendors enable row level security;
+alter table if exists units enable row level security;
+alter table if exists parts enable row level security;
+alter table if exists repairs enable row level security;
+alter table if exists repair_parts enable row level security;
+alter table if exists receipts enable row level security;
+alter table if exists sales enable row level security;
 
+drop policy if exists "Authenticated users have full access" on vendors;
 create policy "Authenticated users have full access" on vendors
   for all using (auth.role() = 'authenticated') with check (auth.role() = 'authenticated');
+drop policy if exists "Authenticated users have full access" on units;
 create policy "Authenticated users have full access" on units
   for all using (auth.role() = 'authenticated') with check (auth.role() = 'authenticated');
+drop policy if exists "Authenticated users have full access" on parts;
 create policy "Authenticated users have full access" on parts
   for all using (auth.role() = 'authenticated') with check (auth.role() = 'authenticated');
+drop policy if exists "Authenticated users have full access" on repairs;
 create policy "Authenticated users have full access" on repairs
   for all using (auth.role() = 'authenticated') with check (auth.role() = 'authenticated');
+drop policy if exists "Authenticated users have full access" on repair_parts;
 create policy "Authenticated users have full access" on repair_parts
   for all using (auth.role() = 'authenticated') with check (auth.role() = 'authenticated');
+drop policy if exists "Authenticated users have full access" on receipts;
 create policy "Authenticated users have full access" on receipts
   for all using (auth.role() = 'authenticated') with check (auth.role() = 'authenticated');
+drop policy if exists "Authenticated users have full access" on sales;
 create policy "Authenticated users have full access" on sales
   for all using (auth.role() = 'authenticated') with check (auth.role() = 'authenticated');
