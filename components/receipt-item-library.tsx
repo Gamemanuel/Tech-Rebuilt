@@ -245,7 +245,7 @@ export function ReceiptItemLibrary() {
                     </p>
                   </div>
                   <div className="grid grid-cols-2 gap-2 text-xs">
-                    <Meta label="Cost" value={formatCurrency(item.cost_cents)} />
+                    <Meta label="Cost" value={formatCurrency(item.cost_cents ?? 0)} />
                     <Meta label="Price" value={formatCurrency(item.price_cents)} />
                     <Meta label="Qty" value={String(item.quantity)} />
                     <Meta label="Receipt" value={item.receipt?.receipt_date ? formatDate(item.receipt.receipt_date) : "—"} />

@@ -15,9 +15,7 @@ export default function NewUnitPage() {
     model: "",
     generation: "",
     serial_number: "",
-    special_number: "",
     condition_grade: "",
-    purchase_price: "",
   });
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -32,17 +30,6 @@ export default function NewUnitPage() {
       setError("Enter a model name — e.g. \"Nintendo Switch OLED\".");
       return;
     }
-    const priceNum = parseFloat(form.purchase_price);
-    if (form.purchase_price && Number.isNaN(priceNum)) {
-      setError("Purchase price must be a number.");
-      return;
-    }
-
-    const now = new Date();
-    const dateString = `${String(now.getDate()).padStart(2, "0")}.${String(now.getMonth() + 1).padStart(2, "0")}.${now.getFullYear()}`;
-    const specialNumber = (form.special_number || "").trim();
-    const { count } = await supabase.from("units").select("id", { count: "exact", head: true });
-    const nextSpecialNumber = specialNumber || `${(count ?? 0) + 1}.${dateString}`;
 
     setSaving(true);
     setError(null);
@@ -51,9 +38,7 @@ export default function NewUnitPage() {
       model: form.model.trim(),
       generation: form.generation.trim() || null,
       serial_number: form.serial_number.trim() || null,
-      special_number: nextSpecialNumber || null,
       condition_grade: form.condition_grade.trim() || null,
-      purchase_price_cents: priceNum ? Math.round(priceNum * 100) : 0,
       status: "sourced",
     });
 
@@ -72,7 +57,10 @@ export default function NewUnitPage() {
     <div className="max-w-md space-y-6">
       <div>
         <h1 className="text-xl font-medium">New unit</h1>
-        <p className="text-sm text-muted-foreground">Logs a unit at the &quot;Sourced&quot; stage.</p>
+        <p className="text-sm text-muted-foreground">
+          Logs a unit at the &quot;Sourced&quot; stage. Attach its acquisition cost — and any parts
+          or accessories — from the Receipts page once you&apos;ve got the receipt.
+        </p>
       </div>
       <Card>
         <CardHeader>
@@ -93,22 +81,8 @@ export default function NewUnitPage() {
               <Input id="serial" value={form.serial_number} onChange={(e) => update("serial_number", e.target.value)} />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="special-number">Special number</Label>
-              <Input
-                id="special-number"
-                placeholder="1.22.08.2026"
-                value={form.special_number}
-                onChange={(e) => update("special_number", e.target.value)}
-              />
-              <p className="text-xs text-muted-foreground">Blank = auto-generated index.day.month.year.</p>
-            </div>
-            <div className="space-y-1.5">
               <Label htmlFor="condition">Condition grade</Label>
               <Input id="condition" placeholder="A, B, C, parts-only..." value={form.condition_grade} onChange={(e) => update("condition_grade", e.target.value)} />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="price">Purchase price ($)</Label>
-              <Input id="price" inputMode="decimal" placeholder="45.00" value={form.purchase_price} onChange={(e) => update("purchase_price", e.target.value)} />
             </div>
             {error && <p className="text-sm text-destructive">{error}</p>}
             <Button type="submit" disabled={saving} className="w-full">

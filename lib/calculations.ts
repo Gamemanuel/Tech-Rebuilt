@@ -1,4 +1,4 @@
-import { UnitWithFinancials } from "./types";
+import { ReceiptBundle, ReceiptItem, ResolvedReceiptItem, UnitWithFinancials } from "./types";
 
 /**
  * All amounts are integer cents in, integer cents out.
@@ -6,49 +6,74 @@ import { UnitWithFinancials } from "./types";
  * and matches how Postgres/Supabase should store it (bigint or numeric(10,0)).
  */
 
+/**
+ * Turns a receipt's raw items + bundles into items with an actual cost
+ * attached. Items priced individually pass through untouched. Items that
+ * belong to a bundle (you entered one total for a lot of stuff, not a
+ * price per item) get an even split of that bundle's total — with any
+ * leftover pennies handed to the first few items so the split always sums
+ * back to exactly what you paid, no fractional cents floating around.
+ *
+ * This is intentionally computed on the fly rather than stored: if you add
+ * or remove an item from a bundle later, every affected item's share
+ * updates automatically instead of going stale.
+ */
+export function resolveItemCosts(
+  items: ReceiptItem[],
+  bundles: ReceiptBundle[]
+): ResolvedReceiptItem[] {
+  const bundleById = new Map(bundles.map((b) => [b.id, b]));
+
+  const groups = new Map<string, ReceiptItem[]>();
+  for (const item of items) {
+    if (!item.bundle_id) continue;
+    const group = groups.get(item.bundle_id) ?? [];
+    group.push(item);
+    groups.set(item.bundle_id, group);
+  }
+
+  const splitByItemId = new Map<string, number>();
+  for (const [bundleId, groupItems] of groups) {
+    const total = bundleById.get(bundleId)?.total_cents ?? 0;
+    const count = groupItems.length;
+    const base = count > 0 ? Math.floor(total / count) : 0;
+    const remainder = total - base * count;
+    groupItems.forEach((item, i) => {
+      splitByItemId.set(item.id, base + (i < remainder ? 1 : 0));
+    });
+  }
+
+  return items.map((item) => ({
+    ...item,
+    isBundled: item.bundle_id !== null,
+    resolvedCostCents: item.bundle_id
+      ? splitByItemId.get(item.id) ?? 0
+      : item.cost_cents ?? 0,
+  }));
+}
+
 export interface UnitCostBreakdown {
-  purchaseCents: number;
-  partsCents: number;
-  itemCents: number;
+  itemsCents: number; // every receipt item (product/part/accessory) attached to this unit
   laborCents: number;
-  loggedLaborCents: number;
+  returnShippingCents: number;
   totalCostCents: number;
 }
 
 export function computeUnitCost(unit: UnitWithFinancials): UnitCostBreakdown {
-  const repairs = unit.repairs ?? [];
-  const unitItems = unit.unit_items ?? [];
-  const laborEntries = unit.labor_entries ?? [];
+  const itemsCents = unit.receipt_items.reduce((sum, item) => sum + item.resolvedCostCents, 0);
 
-  const partsCents = repairs.reduce((sum, repair) => {
-    const repairParts = repair.repair_parts.reduce(
-      (s, rp) => s + rp.cost_at_time_cents * rp.qty_used,
-      0
-    );
-    return sum + repairParts;
-  }, 0);
-
-  const itemCents = unitItems.reduce((sum, item) => sum + item.cost_cents * item.quantity, 0);
-
-  const laborCents = repairs.reduce(
+  const laborCents = unit.repairs.reduce(
     (sum, repair) => sum + Math.round(repair.labor_hours * repair.labor_rate_cents),
     0
   );
 
-  const laborLogCents = laborEntries.reduce(
-    (sum, entry) => sum + Math.round(entry.hours * entry.rate_cents),
-    0
-  );
-
-  const purchaseCents = unit.purchase_price_cents;
+  const returnShippingCents = unit.returns.reduce((sum, r) => sum + r.return_shipping_cents, 0);
 
   return {
-    purchaseCents,
-    partsCents,
-    itemCents,
+    itemsCents,
     laborCents,
-    loggedLaborCents: laborLogCents,
-    totalCostCents: purchaseCents + partsCents + itemCents + laborCents + laborLogCents,
+    returnShippingCents,
+    totalCostCents: itemsCents + laborCents + returnShippingCents,
   };
 }
 
@@ -61,14 +86,14 @@ export interface MarginResult {
 }
 
 export function computeMargin(unit: UnitWithFinancials): MarginResult | null {
-  if (!unit.sale) return null;
+  // Mid-return: not a realized sale, so no margin to show yet.
+  if (!unit.sale || unit.status === "returned") return null;
 
   const { totalCostCents } = computeUnitCost(unit);
   const salePriceCents = unit.sale.sale_price_cents;
   const feesCents = unit.sale.fees_cents;
   const netProfitCents = salePriceCents - feesCents - totalCostCents;
-  const marginPercent =
-    salePriceCents > 0 ? (netProfitCents / salePriceCents) * 100 : 0;
+  const marginPercent = salePriceCents > 0 ? (netProfitCents / salePriceCents) * 100 : 0;
 
   return { salePriceCents, feesCents, totalCostCents, netProfitCents, marginPercent };
 }

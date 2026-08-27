@@ -334,7 +334,7 @@ function ItemList({
               <div>
                 <p className="text-sm font-medium">{item.receipt_item.name}</p>
                 <p className="text-xs text-muted-foreground">
-                  {formatCurrency(item.cost_cents)} cost · {ITEM_CATEGORY_LABELS[item.receipt_item.category]}
+                  {formatCurrency(item.cost_cents ?? 0)} cost · {ITEM_CATEGORY_LABELS[item.receipt_item.category]}
                 </p>
               </div>
               <div className="space-y-1">

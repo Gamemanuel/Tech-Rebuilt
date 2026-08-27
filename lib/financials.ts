@@ -18,14 +18,16 @@ function groupBy<T, K extends string | number>(rows: T[], getKey: (row: T) => K)
 function fallbackReceiptItem(item: UnitItem): ReceiptItem {
   return {
     id: item.receipt_item_id,
-    receipt_id: null,
+    receipt_id: "",
     name: "Unknown item",
+    description: "",
     category: "part",
     quantity: 1,
     cost_cents: item.cost_cents,
     price_cents: item.price_cents,
     notes: null,
-    created_at: item.created_at,
+    bundle_id: null,
+    unit_id: null,
   };
 }
 
@@ -100,6 +102,8 @@ export async function loadUnitsWithFinancials(
       unit_items: unitItemRows,
       labor_entries: laborByUnit.get(unit.id) ?? [],
       sale: salesByUnit.get(unit.id) ?? null,
+      receipt_items: [],
+      returns: [],
     };
   });
 }

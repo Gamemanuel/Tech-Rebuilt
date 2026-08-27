@@ -1,5 +1,5 @@
 // Mirrors the Supabase schema in supabase/migrations/0001_init.sql
-// All money values are stored as integer cents to avoid float rounding errors.
+// plus 0002_receipts_rework.sql. All money values are integer cents.
 
 export type UnitStatus =
   | "sourced"
@@ -8,6 +8,7 @@ export type UnitStatus =
   | "qc_testing"
   | "listed"
   | "sold"
+  | "returned"
   | "parted_out";
 
 export const UNIT_STATUS_LABELS: Record<UnitStatus, string> = {
@@ -17,10 +18,14 @@ export const UNIT_STATUS_LABELS: Record<UnitStatus, string> = {
   qc_testing: "QC testing",
   listed: "Listed for sale",
   sold: "Sold & shipped",
+  returned: "Returned",
   parted_out: "Parted out",
 };
 
-// Ordered left-to-right for the pipeline board. parted_out is an exit, not a stage.
+// Ordered left-to-right for the pipeline board's forward "Advance" flow.
+// "returned" isn't reached by advancing — it's set explicitly when a sale
+// is marked returned, then resolved back to "listed". parted_out is an
+// exit, not a stage on the board.
 export const PIPELINE_STAGES: UnitStatus[] = [
   "sourced",
   "intake",
@@ -30,37 +35,25 @@ export const PIPELINE_STAGES: UnitStatus[] = [
   "sold",
 ];
 
-export interface Vendor {
-  id: string;
-  name: string;
-  type: string | null;
-  notes: string | null;
-  created_at: string;
-}
+export type ItemCategory = "part" | "accessory" | "product" | "supply";
+
+export const ITEM_CATEGORY_LABELS: Record<ItemCategory, string> = {
+  product: "Product",
+  part: "Part",
+  accessory: "Accessory",
+  supply: "Supply / overhead",
+};
 
 export interface Unit {
   id: string;
   model: string;
   generation: string | null;
   serial_number: string | null;
-  special_number: string | null;
   condition_grade: string | null;
-  vendor_id: string | null;
-  purchase_price_cents: number;
-  purchase_date: string | null;
   status: UnitStatus;
   current_stage_since: string;
   notes: string | null;
   created_at: string;
-}
-
-export interface Part {
-  id: string;
-  name: string;
-  sku: string | null;
-  cost_per_unit_cents: number;
-  qty_on_hand: number;
-  reorder_threshold: number;
 }
 
 export interface Repair {
@@ -69,69 +62,54 @@ export interface Repair {
   started_at: string;
   completed_at: string | null;
   labor_hours: number;
+  // Snapshotted from shop_settings.labor_rate_cents_per_hour at the moment
+  // the repair was logged, so past margins don't shift if you change your
+  // rate later. The UI will autofill this — you never type it by hand.
   labor_rate_cents: number;
   notes: string | null;
 }
 
-export interface RepairPart {
-  id: string;
-  repair_id: string;
-  part_id: string;
-  qty_used: number;
-  cost_at_time_cents: number;
-}
-
-export type ItemCategory = "part" | "accessory";
-
-export const ITEM_CATEGORY_LABELS: Record<ItemCategory, string> = {
-  part: "Part",
-  accessory: "Accessory",
-};
-
 export interface Receipt {
   id: string;
-  vendor_id: string | null;
-  unit_id: string | null;
   source_type: "csv" | "image" | "manual";
+  source: string | null; // "eBay", "Goodwill", "ShopGoodwill", or free text
   file_url: string | null;
-  amount_cents: number;
   receipt_date: string | null;
-  category: string | null;
-  description: string | null;
   created_at: string;
+  description: string | null;
+}
+
+export interface ReceiptBundle {
+  id: string;
+  receipt_id: string;
+  description: string | null;
+  total_cents: number;
 }
 
 export interface ReceiptItem {
   id: string;
-  receipt_id: string | null;
-  name: string;
+  receipt_id: string;
+  bundle_id: string | null;
+  unit_id: string | null; // null = supply/overhead item, not tied to a unit
   category: ItemCategory;
+  description: string;
+  cost_cents: number | null; // null exactly when bundle_id is set
+  name: string;
   quantity: number;
-  cost_cents: number;
   price_cents: number;
   notes: string | null;
-  created_at: string;
 }
 
-export interface UnitItem {
-  id: string;
-  unit_id: string;
-  receipt_item_id: string;
-  quantity: number;
-  cost_cents: number;
-  price_cents: number;
-  notes: string | null;
-  created_at: string;
+// A receipt item after bundle math has been applied — see resolveItemCosts
+// in lib/calculations.ts. This is what the UI should actually render/sum.
+export interface ResolvedReceiptItem extends ReceiptItem {
+  resolvedCostCents: number;
+  isBundled: boolean;
 }
 
-export interface LaborEntry {
-  id: string;
-  unit_id: string;
-  unit_item_id: string | null;
-  hours: number;
-  rate_cents: number;
-  notes: string | null;
-  created_at: string;
+export interface ReceiptWithItems extends Receipt {
+  receipt_items: ReceiptItem[];
+  receipt_bundles: ReceiptBundle[];
 }
 
 export interface Sale {
@@ -144,10 +122,61 @@ export interface Sale {
   buyer_notes: string | null;
 }
 
-// Convenience shape for a unit with everything needed to compute margin
+export interface ReturnRecord {
+  id: string;
+  unit_id: string;
+  sale_id: string | null;
+  return_shipping_cents: number;
+  returned_at: string;
+  resolved_at: string | null; // set when it's sent back to Listed
+  notes: string | null;
+}
+
+export interface ShopSettings {
+  labor_rate_cents_per_hour: number;
+}
+
+// Convenience shape for a unit with everything needed to compute cost/margin.
+// `sale` should be the most recent sale for the unit (a unit can be sold,
+// returned, and resold, so don't assume there's only ever one).
 export interface UnitWithFinancials extends Unit {
+  receipt_items: ResolvedReceiptItem[];
+  returns: ReturnRecord[];
+  sale: Sale | null;
+  // Merges your standard Repair type with the nested repair_parts array
   repairs: (Repair & { repair_parts: RepairPart[] })[];
+  // Merges the UnitItem type with its resolved receipt_item
   unit_items: (UnitItem & { receipt_item: ReceiptItem })[];
   labor_entries: LaborEntry[];
-  sale: Sale | null;
+}
+
+
+export interface UnitItem {
+  id: string;
+  unit_id: string;
+  receipt_item_id: string;
+  quantity: number;
+  cost_cents: number | null;
+  price_cents: number;
+  notes: string | null;
+  created_at: string;
+}
+
+export interface LaborEntry {
+  id: string;
+  unit_id: string;
+  unit_item_id: string | null; // Nullable for general labor
+  hours: number;
+  rate_cents: number;
+  notes: string | null;
+  created_at: string;
+}
+
+export interface RepairPart {
+  id: string;
+  repair_id: string;
+  receipt_item_id: string | null;
+  quantity: number;
+  cost_cents: number;
+  created_at: string;
 }
