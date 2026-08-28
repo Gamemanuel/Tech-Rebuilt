@@ -9,7 +9,8 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faTrash, faPlus } from "@fortawesome/free-solid-svg-icons";
+import { faTrash, faPlus, faListCheck } from "@fortawesome/free-solid-svg-icons";
+import { ItemListsDialog } from "@/components/item-lists-dialog";
 import { formatCurrency } from "@/lib/utils";
 import { ITEM_CATEGORY_LABELS, ItemCategory, ReceiptBundle, ResolvedReceiptItem } from "@/lib/types";
 
@@ -39,6 +40,7 @@ export function ReceiptItemsManager({
   const supabase = createClient();
   const [items, setItems] = useState(initialItems);
   const [error, setError] = useState<string | null>(null);
+  const [listsItem, setListsItem] = useState<{ id: string; description: string } | null>(null);
 
   // New item mini-form
   const [category, setCategory] = useState<ItemCategory>("part");
@@ -62,7 +64,7 @@ export function ReceiptItemsManager({
   }
 
   async function deleteItem(itemId: string) {
-    if (!window.confirm("Remove this item from the receipt?")) return;
+    if (!window.confirm("Remove this item from the receipt? Its to-do and shopping list entries go with it.")) return;
     const prev = items;
     setItems((p) => p.filter((i) => i.id !== itemId));
     const { error } = await supabase.from("receipt_items").delete().eq("id", itemId);
@@ -156,9 +158,18 @@ export function ReceiptItemsManager({
                   {item.isBundled && <span className="ml-1 text-xs text-muted-foreground">(split)</span>}
                 </td>
                 <td className="p-3 text-right">
-                  <button onClick={() => deleteItem(item.id)} className="text-muted-foreground hover:text-destructive">
-                    <FontAwesomeIcon icon={faTrash} className="h-3.5 w-3.5" />
-                  </button>
+                  <div className="flex items-center justify-end gap-3">
+                    <button
+                      onClick={() => setListsItem({ id: item.id, description: item.description })}
+                      className="text-muted-foreground hover:text-primary"
+                      title="To-do & shopping list"
+                    >
+                      <FontAwesomeIcon icon={faListCheck} className="h-3.5 w-3.5" />
+                    </button>
+                    <button onClick={() => deleteItem(item.id)} className="text-muted-foreground hover:text-destructive">
+                      <FontAwesomeIcon icon={faTrash} className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
                 </td>
               </tr>
             ))}
@@ -240,6 +251,15 @@ export function ReceiptItemsManager({
           {adding ? "Adding..." : "Add item"}
         </Button>
       </form>
+
+      {listsItem && (
+        <ItemListsDialog
+          itemId={listsItem.id}
+          itemDescription={listsItem.description}
+          open={!!listsItem}
+          onOpenChange={(open) => !open && setListsItem(null)}
+        />
+      )}
     </div>
   );
 }

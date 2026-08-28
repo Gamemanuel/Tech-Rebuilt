@@ -3,7 +3,6 @@ import { PipelineBoard } from "@/components/pipeline-board";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { Unit } from "@/lib/types";
-import { loadUnitsWithFinancials } from "@/lib/financials";
 
 export default async function UnitsPage() {
   const supabase = createClient();
@@ -33,7 +32,7 @@ export default async function UnitsPage() {
         </p>
       )}
 
-      <PipelineBoard initialUnits={await loadUnitsWithFinancials(supabase, (units ?? []) as Unit[])} />
+      <PipelineBoard initialUnits={(units ?? []) as Unit[]} />
     </div>
   );
 }

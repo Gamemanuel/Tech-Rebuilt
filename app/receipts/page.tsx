@@ -27,8 +27,17 @@ export default async function ReceiptsPage() {
 
       {error && <p className="text-sm text-destructive">Couldn&apos;t load receipts: {error.message}</p>}
 
-      <div className="overflow-hidden rounded-lg border border-border">
-        <table className="w-full text-sm">
+      {/* table-layout: fixed + explicit column widths so a long items
+          summary truncates instead of shoving Total off-screen. */}
+      <div className="overflow-x-auto rounded-lg border border-border">
+        <table className="w-full table-fixed text-sm">
+          <colgroup>
+            <col className="w-24" />
+            <col className="w-32" />
+            <col />
+            <col className="w-24" />
+            <col className="w-14" />
+          </colgroup>
           <thead className="bg-muted text-xs uppercase tracking-wide text-muted-foreground">
             <tr>
               <th className="p-3 text-left">Date</th>
@@ -44,24 +53,26 @@ export default async function ReceiptsPage() {
               const totalCents = resolved.reduce((s, i) => s + i.resolvedCostCents, 0);
               const itemCount = resolved.length;
               const categories = Array.from(new Set(resolved.map((i) => i.category as ItemCategory)));
+              const itemsSummary =
+                itemCount === 0
+                  ? "No items yet"
+                  : `${itemCount} item${itemCount === 1 ? "" : "s"} · ${categories
+                      .map((c) => ITEM_CATEGORY_LABELS[c])
+                      .join(", ")}`;
 
               return (
                 <tr key={receipt.id} className="border-t border-border hover:bg-accent/40">
-                  <td className="p-3">
+                  <td className="truncate p-3">
                     <Link href={`/receipts/${receipt.id}`}>
                       {receipt.receipt_date ? formatDate(receipt.receipt_date) : "—"}
                     </Link>
                   </td>
-                  <td className="p-3">{receipt.source ?? "—"}</td>
-                  <td className="p-3 text-muted-foreground">
-                    {itemCount === 0
-                      ? "No items yet"
-                      : `${itemCount} item${itemCount === 1 ? "" : "s"} · ${categories
-                          .map((c) => ITEM_CATEGORY_LABELS[c])
-                          .join(", ")}`}
+                  <td className="truncate p-3">{receipt.source ?? "—"}</td>
+                  <td className="truncate p-3 text-muted-foreground" title={itemsSummary}>
+                    {itemsSummary}
                   </td>
-                  <td className="p-3 text-right font-mono">{formatCurrency(totalCents)}</td>
-                  <td className="p-3 text-right">
+                  <td className="whitespace-nowrap p-3 text-right font-mono">{formatCurrency(totalCents)}</td>
+                  <td className="whitespace-nowrap p-3 text-right">
                     <Link href={`/receipts/${receipt.id}`} className="text-xs text-primary hover:underline">
                       View →
                     </Link>

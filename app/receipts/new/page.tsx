@@ -2,17 +2,21 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Papa from "papaparse";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faPlus, faTrash } from "@fortawesome/free-solid-svg-icons";
 import { ITEM_CATEGORY_LABELS, ItemCategory } from "@/lib/types";
 
 const SOURCE_OPTIONS = ["eBay", "Goodwill", "ShopGoodwill", "Other"];
+
+type UploadKind = "none" | "photo" | "pdf" | "csv";
 
 interface DraftBundle {
   tempId: string;
@@ -28,6 +32,11 @@ interface DraftItem {
   bundleTempId: string | null;
 }
 
+interface CsvPreview {
+  headers: string[];
+  rows: string[][];
+}
+
 function newId() {
   return Math.random().toString(36).slice(2);
 }
@@ -39,7 +48,11 @@ export default function NewReceiptPage() {
   const [source, setSource] = useState("eBay");
   const [customSource, setCustomSource] = useState("");
   const [receiptDate, setReceiptDate] = useState(() => new Date().toISOString().slice(0, 10));
+
+  const [uploadKind, setUploadKind] = useState<UploadKind>("photo");
   const [file, setFile] = useState<File | null>(null);
+  const [csvPreview, setCsvPreview] = useState<CsvPreview | null>(null);
+  const [csvError, setCsvError] = useState<string | null>(null);
 
   const [items, setItems] = useState<DraftItem[]>([
     { tempId: newId(), category: "part", description: "", costDollars: "", bundleTempId: null },
@@ -48,6 +61,33 @@ export default function NewReceiptPage() {
 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  function selectUploadKind(kind: UploadKind) {
+    setUploadKind(kind);
+    setFile(null);
+    setCsvPreview(null);
+    setCsvError(null);
+  }
+
+  function handleCsvFile(f: File | null) {
+    setFile(f);
+    setCsvPreview(null);
+    setCsvError(null);
+    if (!f) return;
+
+    Papa.parse<string[]>(f, {
+      complete: (results) => {
+        const rows = results.data.filter((row) => row.some((cell) => (cell ?? "").trim() !== ""));
+        if (rows.length === 0) {
+          setCsvError("Couldn't find any rows in that file.");
+          return;
+        }
+        const [headers, ...body] = rows;
+        setCsvPreview({ headers, rows: body });
+      },
+      error: (err) => setCsvError(err.message),
+    });
+  }
 
   function addItem() {
     setItems((prev) => [...prev, { tempId: newId(), category: "part", description: "", costDollars: "", bundleTempId: null }]);
@@ -73,6 +113,11 @@ export default function NewReceiptPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+
+    if (uploadKind === "csv" && file && !csvPreview) {
+      setError(csvError ?? "That CSV hasn't finished parsing yet — give it a second and try again.");
+      return;
+    }
 
     const cleanItems = items.filter((i) => i.description.trim());
     if (cleanItems.length === 0) {
@@ -111,14 +156,17 @@ export default function NewReceiptPage() {
     }
 
     const finalSource = source === "Other" ? customSource.trim() || null : source;
+    const sourceType = uploadKind === "photo" ? "image" : uploadKind === "pdf" ? "pdf" : uploadKind === "csv" ? "csv" : "manual";
 
     const { data: receipt, error: receiptError } = await supabase
       .from("receipts")
       .insert({
-        source_type: file ? "image" : "manual",
+        source_type: sourceType,
         source: finalSource,
         receipt_date: receiptDate || null,
         file_url: fileUrl,
+        csv_headers: uploadKind === "csv" ? csvPreview?.headers ?? null : null,
+        csv_rows: uploadKind === "csv" ? csvPreview?.rows ?? null : null,
       })
       .select()
       .single();
@@ -218,15 +266,82 @@ export default function NewReceiptPage() {
                 <Input id="date" type="date" value={receiptDate} onChange={(e) => setReceiptDate(e.target.value)} />
               </div>
             </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="file">Photo (optional)</Label>
-              <input
-                id="file"
-                type="file"
-                accept="image/*"
-                onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-                className="text-sm file:mr-3 file:rounded-md file:border-0 file:bg-secondary file:px-3 file:py-1.5 file:text-sm"
-              />
+
+            <div className="space-y-2">
+              <Label>File</Label>
+              <Tabs value={uploadKind} onValueChange={(v) => selectUploadKind(v as UploadKind)}>
+                <TabsList>
+                  <TabsTrigger value="photo">Photo</TabsTrigger>
+                  <TabsTrigger value="pdf">PDF</TabsTrigger>
+                  <TabsTrigger value="csv">CSV</TabsTrigger>
+                  <TabsTrigger value="none">No file</TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="photo">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+                    className="text-sm file:mr-3 file:rounded-md file:border-0 file:bg-secondary file:px-3 file:py-1.5 file:text-sm"
+                  />
+                </TabsContent>
+
+                <TabsContent value="pdf">
+                  <input
+                    type="file"
+                    accept="application/pdf"
+                    onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+                    className="text-sm file:mr-3 file:rounded-md file:border-0 file:bg-secondary file:px-3 file:py-1.5 file:text-sm"
+                  />
+                </TabsContent>
+
+                <TabsContent value="csv" className="space-y-3">
+                  <input
+                    type="file"
+                    accept=".csv,text/csv"
+                    onChange={(e) => handleCsvFile(e.target.files?.[0] ?? null)}
+                    className="text-sm file:mr-3 file:rounded-md file:border-0 file:bg-secondary file:px-3 file:py-1.5 file:text-sm"
+                  />
+                  {csvError && <p className="text-sm text-destructive">{csvError}</p>}
+                  {csvPreview && (
+                    <div className="max-h-48 overflow-auto rounded-md border border-border">
+                      <table className="w-full text-xs">
+                        <thead className="bg-muted">
+                          <tr>
+                            {csvPreview.headers.map((h, i) => (
+                              <th key={i} className="p-2 text-left font-medium">
+                                {h}
+                              </th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {csvPreview.rows.slice(0, 5).map((row, i) => (
+                            <tr key={i} className="border-t border-border">
+                              {row.map((cell, j) => (
+                                <td key={j} className="p-2">
+                                  {cell}
+                                </td>
+                              ))}
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                      {csvPreview.rows.length > 5 && (
+                        <p className="border-t border-border p-2 text-xs text-muted-foreground">
+                          + {csvPreview.rows.length - 5} more rows — the full file gets saved with the receipt.
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </TabsContent>
+
+                <TabsContent value="none">
+                  <p className="text-xs text-muted-foreground">
+                    Fine — just fill in the items below by hand.
+                  </p>
+                </TabsContent>
+              </Tabs>
             </div>
           </CardContent>
         </Card>

@@ -1,5 +1,6 @@
-// Mirrors the Supabase schema in supabase/migrations/0001_init.sql
-// plus 0002_receipts_rework.sql. All money values are integer cents.
+// Mirrors the Supabase schema in supabase/migrations/0001_init.sql,
+// 0002_receipts_rework.sql, and 0004_item_lists_and_receipt_files.sql.
+// All money values are integer cents.
 
 export type UnitStatus =
   | "sourced"
@@ -64,19 +65,22 @@ export interface Repair {
   labor_hours: number;
   // Snapshotted from shop_settings.labor_rate_cents_per_hour at the moment
   // the repair was logged, so past margins don't shift if you change your
-  // rate later. The UI will autofill this — you never type it by hand.
+  // rate later. The UI auto-fills this — you never type it by hand.
   labor_rate_cents: number;
   notes: string | null;
 }
 
 export interface Receipt {
   id: string;
-  source_type: "csv" | "image" | "manual";
+  source_type: "csv" | "image" | "manual" | "pdf";
   source: string | null; // "eBay", "Goodwill", "ShopGoodwill", or free text
   file_url: string | null;
   receipt_date: string | null;
   created_at: string;
-  description: string | null;
+  // Only set when source_type === "csv" — parallel arrays (not
+  // array-of-objects) so column order survives the JSON round-trip.
+  csv_headers: string[] | null;
+  csv_rows: string[][] | null;
 }
 
 export interface ReceiptBundle {
@@ -94,10 +98,6 @@ export interface ReceiptItem {
   category: ItemCategory;
   description: string;
   cost_cents: number | null; // null exactly when bundle_id is set
-  name: string;
-  quantity: number;
-  price_cents: number;
-  notes: string | null;
 }
 
 // A receipt item after bundle math has been applied — see resolveItemCosts
@@ -110,6 +110,22 @@ export interface ResolvedReceiptItem extends ReceiptItem {
 export interface ReceiptWithItems extends Receipt {
   receipt_items: ReceiptItem[];
   receipt_bundles: ReceiptBundle[];
+}
+
+export interface ItemTodo {
+  id: string;
+  receipt_item_id: string;
+  description: string;
+  done: boolean;
+  created_at: string;
+}
+
+export interface ShoppingItem {
+  id: string;
+  receipt_item_id: string;
+  description: string;
+  done: boolean; // "purchased"
+  created_at: string;
 }
 
 export interface Sale {
@@ -140,43 +156,8 @@ export interface ShopSettings {
 // `sale` should be the most recent sale for the unit (a unit can be sold,
 // returned, and resold, so don't assume there's only ever one).
 export interface UnitWithFinancials extends Unit {
+  repairs: Repair[];
   receipt_items: ResolvedReceiptItem[];
   returns: ReturnRecord[];
   sale: Sale | null;
-  // Merges your standard Repair type with the nested repair_parts array
-  repairs: (Repair & { repair_parts: RepairPart[] })[];
-  // Merges the UnitItem type with its resolved receipt_item
-  unit_items: (UnitItem & { receipt_item: ReceiptItem })[];
-  labor_entries: LaborEntry[];
-}
-
-
-export interface UnitItem {
-  id: string;
-  unit_id: string;
-  receipt_item_id: string;
-  quantity: number;
-  cost_cents: number | null;
-  price_cents: number;
-  notes: string | null;
-  created_at: string;
-}
-
-export interface LaborEntry {
-  id: string;
-  unit_id: string;
-  unit_item_id: string | null; // Nullable for general labor
-  hours: number;
-  rate_cents: number;
-  notes: string | null;
-  created_at: string;
-}
-
-export interface RepairPart {
-  id: string;
-  repair_id: string;
-  receipt_item_id: string | null;
-  quantity: number;
-  cost_cents: number;
-  created_at: string;
 }
