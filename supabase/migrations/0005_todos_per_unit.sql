@@ -6,19 +6,22 @@
 -- list is unchanged and stays on receipt_items.
 
 create table if not exists unit_todos (
-                                          id uuid primary key default gen_random_uuid(),
-    unit_id uuid not null references units(id) on delete cascade,
-    description text not null,
-    done boolean not null default false,
-    created_at timestamptz not null default now()
-    );
+  id uuid primary key default gen_random_uuid(),
+  unit_id uuid not null references units(id) on delete cascade,
+  description text not null,
+  done boolean not null default false,
+  created_at timestamptz not null default now()
+);
 
 create index if not exists unit_todos_unit_id_idx on unit_todos(unit_id);
 
+-- Carry over anything already entered, for items that were attached to a
+-- unit. Todos on items with no unit assigned have nowhere to go and are
+-- dropped — there weren't many of these yet, if any.
 insert into unit_todos (unit_id, description, done, created_at)
 select ri.unit_id, it.description, it.done, it.created_at
 from item_todos it
-         join receipt_items ri on ri.id = it.receipt_item_id
+join receipt_items ri on ri.id = it.receipt_item_id
 where ri.unit_id is not null;
 
 drop table if exists item_todos;

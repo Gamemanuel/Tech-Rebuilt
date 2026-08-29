@@ -113,11 +113,11 @@ export interface ReceiptWithItems extends Receipt {
 }
 
 export interface UnitTodo {
-    id: string;
-    unit_id: string;
-    description: string;
-    done: boolean;
-    created_at: string;
+  id: string;
+  unit_id: string;
+  description: string;
+  done: boolean;
+  created_at: string;
 }
 
 export interface ShoppingItem {

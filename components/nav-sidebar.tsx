@@ -12,7 +12,7 @@ const NAV_ITEMS: { href: string; label: string; icon: IconDefinition }[] = [
   { href: "/", label: "Dashboard", icon: faGaugeHigh },
   { href: "/units", label: "Pipeline", icon: faBoxesStacked },
   { href: "/receipts", label: "Receipts", icon: faReceipt },
-  // { href: "/lists", label: "Lists", icon: faListCheck },
+  { href: "/lists", label: "Lists", icon: faListCheck },
   { href: "/settings", label: "Settings", icon: faGear },
 ];
 

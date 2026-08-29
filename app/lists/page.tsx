@@ -6,7 +6,7 @@ export default async function ListsPage() {
   const [{ data: todos }, { data: shopping }] = await Promise.all([
     supabase
       .from("unit_todos")
-      .select("*, receipt_item:receipt_items(id, description, receipt_id)")
+      .select("*, unit:units(id, model, generation, serial_number)")
       .order("created_at", { ascending: false }),
     supabase
       .from("item_shopping_items")
@@ -19,7 +19,7 @@ export default async function ListsPage() {
       <div>
         <h1 className="text-xl font-medium">Lists</h1>
         <p className="text-sm text-muted-foreground">
-          Every item&apos;s to-do and shopping list, rolled up in one place.
+          Every unit&apos;s to-do list and every item&apos;s shopping list, rolled up in one place.
         </p>
       </div>
       <MasterLists initialTodos={(todos ?? []) as any} initialShopping={(shopping ?? []) as any} />
