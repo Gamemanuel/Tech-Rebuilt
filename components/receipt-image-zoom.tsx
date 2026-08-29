@@ -1,65 +1,74 @@
 "use client";
 
-import { useState } from "react";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faMagnifyingGlass } from "@fortawesome/free-solid-svg-icons";
-import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import { useRef, useState } from "react";
+
+const LENS_SIZE = 256; // px, the square lens that follows the cursor
+const EXTRA_ZOOM = 1.6; // additional magnification beyond native resolution
 
 export function ReceiptImageZoom({ src, alt }: { src: string; alt: string }) {
-  const [open, setOpen] = useState(false);
-  const [zoomed, setZoomed] = useState(false);
-  const [origin, setOrigin] = useState("center");
+    const containerRef = useRef<HTMLDivElement>(null);
+    const [natural, setNatural] = useState({ width: 0, height: 0 });
+    const [displayed, setDisplayed] = useState({ width: 0, height: 0 });
+    const [lensPos, setLensPos] = useState({ x: 0, y: 0 });
+    const [showLens, setShowLens] = useState(false);
 
-  function handleImageClick(e: React.MouseEvent<HTMLImageElement>) {
-    if (!zoomed) {
-      const rect = e.currentTarget.getBoundingClientRect();
-      const x = ((e.clientX - rect.left) / rect.width) * 100;
-      const y = ((e.clientY - rect.top) / rect.height) * 100;
-      setOrigin(`${x}% ${y}%`);
+    function handleMouseMove(e: React.MouseEvent<HTMLDivElement>) {
+        const rect = containerRef.current!.getBoundingClientRect();
+        let x = e.clientX - rect.left;
+        let y = e.clientY - rect.top;
+
+        // Keep the lens fully within the image bounds
+        x = Math.max(0, Math.min(x, rect.width));
+        y = Math.max(0, Math.min(y, rect.height));
+
+        setLensPos({ x, y });
     }
-    setZoomed((z) => !z);
-  }
 
-  return (
-    <>
-      <div className="relative inline-block">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={src} alt={alt} className="max-h-96 rounded-md border border-border" />
-        <button
-          type="button"
-          onClick={() => setOpen(true)}
-          aria-label="Zoom image"
-          className="absolute bottom-2 right-2 flex h-8 w-8 items-center justify-center rounded-md bg-foreground/85 text-background transition-colors hover:bg-foreground"
+    const scaleX = displayed.width ? natural.width / displayed.width : 1;
+    const scaleY = displayed.height ? natural.height / displayed.height : 1;
+    const zoomedWidth = natural.width * EXTRA_ZOOM;
+    const zoomedHeight = natural.height * EXTRA_ZOOM;
+
+    // Position within the zoomed background that should sit under the cursor
+    const bgX = lensPos.x * scaleX * EXTRA_ZOOM;
+    const bgY = lensPos.y * scaleY * EXTRA_ZOOM;
+
+    return (
+        <div
+            ref={containerRef}
+            className="relative inline-block select-none"
+            onMouseEnter={() => setShowLens(true)}
+            onMouseLeave={() => setShowLens(false)}
+            onMouseMove={handleMouseMove}
         >
-          <FontAwesomeIcon icon={faMagnifyingGlass} className="h-3.5 w-3.5" />
-        </button>
-      </div>
-
-      <Dialog
-        open={open}
-        onOpenChange={(next) => {
-          setOpen(next);
-          if (!next) setZoomed(false);
-        }}
-      >
-        <DialogContent className="flex max-h-[92vh] w-full max-w-4xl items-center justify-center overflow-hidden p-2">
-          <DialogTitle className="sr-only">{alt}</DialogTitle>
-          <div className="max-h-[85vh] w-full overflow-auto rounded-md">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src={src}
-              alt={alt}
-              onClick={handleImageClick}
-              className="w-full select-none transition-transform duration-200"
-              style={{
-                transform: zoomed ? "scale(2)" : "scale(1)",
-                transformOrigin: origin,
-                cursor: zoomed ? "zoom-out" : "zoom-in",
-              }}
+                src={src}
+                alt={alt}
+                draggable={false}
+                onLoad={(e) => {
+                    const img = e.currentTarget;
+                    setNatural({ width: img.naturalWidth, height: img.naturalHeight });
+                    setDisplayed({ width: img.width, height: img.height });
+                }}
+                className="max-h-96 rounded-md border border-border"
             />
-          </div>
-        </DialogContent>
-      </Dialog>
-    </>
-  );
+
+            {showLens && natural.width > 0 && (
+                <div
+                    className="pointer-events-none absolute overflow-hidden rounded-md border-2 border-primary shadow-lg"
+                    style={{
+                        width: LENS_SIZE,
+                        height: LENS_SIZE,
+                        left: lensPos.x - LENS_SIZE / 2,
+                        top: lensPos.y - LENS_SIZE / 2,
+                        backgroundImage: `url(${src})`,
+                        backgroundRepeat: "no-repeat",
+                        backgroundSize: `${zoomedWidth}px ${zoomedHeight}px`,
+                        backgroundPosition: `-${bgX - LENS_SIZE / 2}px -${bgY - LENS_SIZE / 2}px`,
+                    }}
+                />
+            )}
+        </div>
+    );
 }
