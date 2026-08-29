@@ -17,8 +17,7 @@ import {
   TableCell,
 } from "@/components/ui/table";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faTrash, faPlus, faListCheck } from "@fortawesome/free-solid-svg-icons";
-import { ItemListsDialog } from "@/components/item-lists-dialog";
+import { faTrash, faPlus } from "@fortawesome/free-solid-svg-icons";
 import { formatCurrency } from "@/lib/utils";
 import { ITEM_CATEGORY_LABELS, ItemCategory, ReceiptBundle, ResolvedReceiptItem } from "@/lib/types";
 
@@ -54,7 +53,6 @@ export function ReceiptItemsManager({
   const supabase = createClient();
   const [items, setItems] = useState(initialItems);
   const [error, setError] = useState<string | null>(null);
-  const [listsItem, setListsItem] = useState<{ id: string; description: string } | null>(null);
 
   // New item mini-form
   const [category, setCategory] = useState<ItemCategory>("part");
@@ -148,12 +146,12 @@ export function ReceiptItemsManager({
             className="overflow-x-auto rounded-lg border border-border focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
           <Table className="min-w-[720px] table-fixed">
-            <TableHeader>
+            <TableHeader className="bg-muted">
               <TableRow>
-                <TableHead className="w-[120px]">Category</TableHead>
-                <TableHead>Item</TableHead>
-                <TableHead className="w-[220px]">Unit</TableHead>
-                <TableHead className="w-[120px] text-right">Cost</TableHead>
+                <TableHead className="w-[120px] text-xs uppercase tracking-wide">Category</TableHead>
+                <TableHead className="text-xs uppercase tracking-wide">Item</TableHead>
+                <TableHead className="w-[220px] text-xs uppercase tracking-wide">Unit</TableHead>
+                <TableHead className="w-[120px] text-right text-xs uppercase tracking-wide">Cost</TableHead>
                 <TableHead className="w-20 text-right">
                   <span className="sr-only">Actions</span>
                 </TableHead>
@@ -184,7 +182,7 @@ export function ReceiptItemsManager({
                                   aria-label={`Assign unit for ${item.description}`}
                                   title={selectedUnitLabel}
                               >
-                                <SelectValue asChild>
+                                <SelectValue>
                             <span
                                 style={{
                                   display: "block",
@@ -215,23 +213,13 @@ export function ReceiptItemsManager({
                         {item.isBundled && <span className="ml-1 text-xs text-muted-foreground">(split)</span>}
                       </TableCell>
                       <TableCell className="text-right">
-                        <div className="flex items-center justify-end gap-3">
-                          <button
-                              onClick={() => setListsItem({ id: item.id, description: item.description })}
-                              className="text-muted-foreground hover:text-primary"
-                              title="To-do & shopping list"
-                              aria-label={`Open to-do and shopping list for ${item.description}`}
-                          >
-                            <FontAwesomeIcon icon={faListCheck} className="h-3.5 w-3.5" />
-                          </button>
-                          <button
-                              onClick={() => deleteItem(item.id)}
-                              className="text-muted-foreground hover:text-destructive"
-                              aria-label={`Remove ${item.description}`}
-                          >
-                            <FontAwesomeIcon icon={faTrash} className="h-3.5 w-3.5" />
-                          </button>
-                        </div>
+                        <button
+                            onClick={() => deleteItem(item.id)}
+                            className="text-muted-foreground hover:text-destructive"
+                            aria-label={`Remove ${item.description}`}
+                        >
+                          <FontAwesomeIcon icon={faTrash} className="h-3.5 w-3.5" />
+                        </button>
                       </TableCell>
                     </TableRow>
                 );
@@ -323,14 +311,6 @@ export function ReceiptItemsManager({
           </Button>
         </form>
 
-        {listsItem && (
-            <ItemListsDialog
-                itemId={listsItem.id}
-                itemDescription={listsItem.description}
-                open={!!listsItem}
-                onOpenChange={(open) => !open && setListsItem(null)}
-            />
-        )}
       </div>
   );
 }

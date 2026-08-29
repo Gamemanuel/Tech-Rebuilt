@@ -112,12 +112,12 @@ export interface ReceiptWithItems extends Receipt {
   receipt_bundles: ReceiptBundle[];
 }
 
-export interface ItemTodo {
-  id: string;
-  receipt_item_id: string;
-  description: string;
-  done: boolean;
-  created_at: string;
+export interface UnitTodo {
+    id: string;
+    unit_id: string;
+    description: string;
+    done: boolean;
+    created_at: string;
 }
 
 export interface ShoppingItem {

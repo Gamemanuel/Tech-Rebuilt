@@ -9,6 +9,8 @@ import {
   TableHead,
   TableCell,
 } from "@/components/ui/table";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faEye } from "@fortawesome/free-solid-svg-icons";
 import { resolveItemCosts } from "@/lib/calculations";
 import { ITEM_CATEGORY_LABELS, ItemCategory } from "@/lib/types";
 import { formatCurrency, formatDate } from "@/lib/utils";
@@ -56,12 +58,12 @@ export default async function ReceiptsPage() {
               <col className="w-24" />
               <col className="w-14" />
             </colgroup>
-            <TableHeader>
+            <TableHeader className="bg-muted">
               <TableRow>
-                <TableHead>Date</TableHead>
-                <TableHead>Source</TableHead>
-                <TableHead>Items</TableHead>
-                <TableHead className="text-right">Total</TableHead>
+                <TableHead className="text-xs uppercase tracking-wide">Date</TableHead>
+                <TableHead className="text-xs uppercase tracking-wide">Source</TableHead>
+                <TableHead className="text-xs uppercase tracking-wide">Items</TableHead>
+                <TableHead className="text-right text-xs uppercase tracking-wide">Total</TableHead>
                 <TableHead className="text-right">
                   <span className="sr-only">Actions</span>
                 </TableHead>
@@ -80,6 +82,22 @@ export default async function ReceiptsPage() {
                             .map((c) => ITEM_CATEGORY_LABELS[c])
                             .join(", ")}`;
 
+                // Bundles first (they're the thing you can't tell apart from
+                // the category summary alone); if there are none, fall back
+                // to naming a few of the items so there's still a preview.
+                const bundles = (receipt.receipt_bundles ?? []) as { id: string; description: string | null; total_cents: number }[];
+                const detailPreview =
+                    bundles.length > 0
+                        ? bundles
+                            .map((b) => `${b.description?.trim() || "Bundle"} (${formatCurrency(b.total_cents)})`)
+                            .join(" · ")
+                        : itemCount > 0
+                            ? resolved
+                            .slice(0, 3)
+                            .map((i) => i.description)
+                            .join(", ") + (itemCount > 3 ? `, +${itemCount - 3} more` : "")
+                            : null;
+
                 return (
                     <TableRow key={receipt.id}>
                       <TableCell className="truncate">
@@ -88,15 +106,27 @@ export default async function ReceiptsPage() {
                         </Link>
                       </TableCell>
                       <TableCell className="truncate">{receipt.source ?? "—"}</TableCell>
-                      <TableCell className="truncate text-muted-foreground" title={itemsSummary}>
-                        {itemsSummary}
+                      <TableCell className="text-muted-foreground">
+                        <div className="truncate" title={itemsSummary}>
+                          {itemsSummary}
+                        </div>
+                        {detailPreview && (
+                            <div className="truncate text-xs text-muted-foreground/70" title={detailPreview}>
+                              {detailPreview}
+                            </div>
+                        )}
                       </TableCell>
                       <TableCell className="whitespace-nowrap text-right font-mono">
                         {formatCurrency(totalCents)}
                       </TableCell>
                       <TableCell className="whitespace-nowrap text-right">
-                        <Link href={`/receipts/${receipt.id}`} className="text-xs text-primary hover:underline">
-                          View →
+                        <Link
+                            href={`/receipts/${receipt.id}`}
+                            className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
+                            aria-label={`View receipt from ${receipt.source ?? "unknown source"}`}
+                        >
+                          <span className="sr-only sm:not-sr-only">View</span>
+                          <FontAwesomeIcon icon={faEye} className="h-3.5 w-3.5" />
                         </Link>
                       </TableCell>
                     </TableRow>

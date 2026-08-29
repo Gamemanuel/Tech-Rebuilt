@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faTrash, faPlus } from "@fortawesome/free-solid-svg-icons";
-import { ItemTodo, ShoppingItem } from "@/lib/types";
+import { UnitTodo, ShoppingItem } from "@/lib/types";
 
 export function ItemListsDialog({
   itemId,
@@ -21,7 +21,7 @@ export function ItemListsDialog({
   onOpenChange: (open: boolean) => void;
 }) {
   const supabase = createClient();
-  const [todos, setTodos] = useState<ItemTodo[]>([]);
+  const [todos, setTodos] = useState<UnitTodo[]>([]);
   const [shopping, setShopping] = useState<ShoppingItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [newTodo, setNewTodo] = useState("");
@@ -37,7 +37,7 @@ export function ItemListsDialog({
         supabase.from("item_shopping_items").select("*").eq("receipt_item_id", itemId).order("created_at"),
       ]);
       if (!active) return;
-      setTodos((todoRows ?? []) as ItemTodo[]);
+      setTodos((todoRows ?? []) as UnitTodo[]);
       setShopping((shopRows ?? []) as ShoppingItem[]);
       setLoading(false);
     })();
@@ -55,12 +55,12 @@ export function ItemListsDialog({
       .select()
       .single();
     if (!error && data) {
-      setTodos((p) => [...p, data as ItemTodo]);
+      setTodos((p) => [...p, data as UnitTodo]);
       setNewTodo("");
     }
   }
 
-  async function toggleTodo(todo: ItemTodo) {
+  async function toggleTodo(todo: UnitTodo) {
     setTodos((p) => p.map((t) => (t.id === todo.id ? { ...t, done: !t.done } : t)));
     await supabase.from("item_todos").update({ done: !todo.done }).eq("id", todo.id);
   }

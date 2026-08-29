@@ -5,7 +5,7 @@ export default async function ListsPage() {
   const supabase = createClient();
   const [{ data: todos }, { data: shopping }] = await Promise.all([
     supabase
-      .from("item_todos")
+      .from("unit_todos")
       .select("*, receipt_item:receipt_items(id, description, receipt_id)")
       .order("created_at", { ascending: false }),
     supabase
