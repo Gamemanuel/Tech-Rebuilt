@@ -29,10 +29,10 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "../../../../../Downloads/crop-bench/image-cropper/components/ui/select";
-import { Slider } from "../../../../../Downloads/crop-bench/image-cropper/components/ui/slider";
-import { Label } from "../../../../../Downloads/crop-bench/image-cropper/components/ui/label";
-import { Badge } from "../../../../../Downloads/crop-bench/image-cropper/components/ui/badge";
+} from "./ui/select";
+import { Slider } from "./ui/slider";
+import { Label } from "./ui/label";
+import { Badge } from "./ui/badge";
 import { cn, formatBytes } from "@/lib/utils";
 import {
   ASPECT_PRESETS,
