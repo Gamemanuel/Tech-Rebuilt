@@ -161,3 +161,16 @@ export interface UnitWithFinancials extends Unit {
   returns: ReturnRecord[];
   sale: Sale | null;
 }
+
+export interface Unit {
+  id: string;
+  model: string;
+  generation: string | null;
+  serial_number: string | null;
+  condition_grade: string | null;
+  status: UnitStatus;
+  current_stage_since: string;
+  archived_at: string | null; // set when tucked away from the Pipeline board
+  notes: string | null;
+  created_at: string;
+}

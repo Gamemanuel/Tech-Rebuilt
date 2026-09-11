@@ -11,6 +11,8 @@ import { formatCurrency, formatDate } from "@/lib/utils";
 import { computeUnitCost, computeMargin } from "@/lib/calculations";
 import { resolveItemsWithBundleContext } from "@/lib/data";
 import { UNIT_STATUS_LABELS, UnitWithFinancials, Sale, ReturnRecord, UnitTodo } from "@/lib/types";
+import { ArchiveUnitButton } from "@/components/archive-unit-button";
+import { UnarchiveButton } from "@/components/unarchive-button";
 
 export default async function UnitDetailPage({ params }: { params: { id: string } }) {
   const supabase = createClient();
@@ -68,7 +70,10 @@ export default async function UnitDetailPage({ params }: { params: { id: string 
             {unit.serial_number && <span className="font-mono">{unit.serial_number}</span>}
           </p>
         </div>
-        <Badge>{UNIT_STATUS_LABELS[unit.status as keyof typeof UNIT_STATUS_LABELS]}</Badge>
+        <div className="flex items-center gap-2">
+          <Badge>{UNIT_STATUS_LABELS[unit.status as keyof typeof UNIT_STATUS_LABELS]}</Badge>
+          {unit.archived_at && <Badge variant="secondary">Archived</Badge>}
+        </div>
       </div>
 
       <Card>
@@ -127,6 +132,18 @@ export default async function UnitDetailPage({ params }: { params: { id: string 
             </div>
             <p className="text-xs text-muted-foreground">{margin.marginPercent.toFixed(1)}% margin</p>
             {currentSale && <MarkReturnedButton unitId={unit.id} saleId={currentSale.id} />}
+            <div className="flex items-center gap-2 pt-2">
+              {unit.archived_at ? (
+                  <>
+                    <span className="text-xs text-muted-foreground">
+                      Archived {formatDate(unit.archived_at)}
+                    </span>
+                    <UnarchiveButton unitId={unit.id} />
+                  </>
+              ) : (
+                  <ArchiveUnitButton unitId={unit.id} />
+              )}
+            </div>
           </CardContent>
         </Card>
       ) : (
