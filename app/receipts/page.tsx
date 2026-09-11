@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import {
   Table,
   TableHeader,
@@ -20,6 +21,7 @@ export default async function ReceiptsPage() {
   const { data: receipts, error } = await supabase
       .from("receipts")
       .select("*, receipt_items(*), receipt_bundles(*)")
+      .is("archived_at", null)
       .order("receipt_date", { ascending: false, nullsFirst: false })
       .order("created_at", { ascending: false });
 
@@ -28,7 +30,12 @@ export default async function ReceiptsPage() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-xl font-medium">Receipts</h1>
-            <p className="text-sm text-muted-foreground">Every dollar you&apos;ve spent, in one place.</p>
+            <p className="text-sm text-muted-foreground">
+              Every dollar you&apos;ve spent, in one place.{" "}
+              <Link href="/archive" className="text-primary hover:underline">
+                View archived receipts →
+              </Link>
+            </p>
           </div>
           <Button asChild size="sm">
             <Link href="/receipts/new">+ Upload receipt</Link>
@@ -37,13 +44,6 @@ export default async function ReceiptsPage() {
 
         {error && <p className="text-sm text-destructive">Couldn&apos;t load receipts: {error.message}</p>}
 
-        {/*
-        Accessible horizontal scroll region (same pattern as the receipt
-        items table): tabIndex + role="region" + aria-label so keyboard
-        and screen-reader users can find and scroll it (WCAG 2.1.1 /
-        1.4.10). min-w keeps the desktop column layout intact; narrower
-        viewports scroll instead of squeezing columns unreadable.
-      */}
         <div
             tabIndex={0}
             role="region"
@@ -82,9 +82,9 @@ export default async function ReceiptsPage() {
                             .map((c) => ITEM_CATEGORY_LABELS[c])
                             .join(", ")}`;
 
-                // Bundles first (they're the thing you can't tell apart from
-                // the category summary alone); if there are none, fall back
-                // to naming a few of the items so there's still a preview.
+                const assignable = resolved.filter((i) => i.category !== "supply");
+                const fullyAssigned = assignable.length > 0 && assignable.every((i) => i.unit_id !== null);
+
                 const bundles = (receipt.receipt_bundles ?? []) as { id: string; description: string | null; total_cents: number }[];
                 const detailPreview =
                     bundles.length > 0
@@ -107,8 +107,15 @@ export default async function ReceiptsPage() {
                       </TableCell>
                       <TableCell className="truncate">{receipt.source ?? "—"}</TableCell>
                       <TableCell className="text-muted-foreground">
-                        <div className="truncate" title={itemsSummary}>
-                          {itemsSummary}
+                        <div className="flex items-center gap-2">
+                          <div className="truncate" title={itemsSummary}>
+                            {itemsSummary}
+                          </div>
+                          {fullyAssigned && (
+                              <Badge variant="success" className="shrink-0 text-[10px]">
+                                Fully assigned
+                              </Badge>
+                          )}
                         </div>
                         {detailPreview && (
                             <div className="truncate text-xs text-muted-foreground/70" title={detailPreview}>

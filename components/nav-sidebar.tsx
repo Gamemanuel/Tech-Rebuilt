@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faGaugeHigh, faBoxesStacked, faReceipt, faListCheck, faGear, faPhotoFilm, faBoxArchive, faClock } from "@fortawesome/free-solid-svg-icons";
+import { faGaugeHigh, faBoxesStacked, faReceipt, faListCheck, faGear, faPhotoFilm, faBoxArchive, faClock, faWarehouse } from "@fortawesome/free-solid-svg-icons";
 import type { IconDefinition } from "@fortawesome/fontawesome-svg-core";
 import { cn } from "@/lib/utils";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -13,6 +13,7 @@ const NAV_ITEMS: { href: string; label: string; icon: IconDefinition }[] = [
   { href: "/units", label: "Pipeline", icon: faBoxesStacked },
   { href: "/receipts", label: "Receipts", icon: faReceipt },
   { href: "/labor", label: "Labor", icon: faClock },
+  { href: "/inventory", label: "Inventory", icon: faWarehouse },
   { href: "/lists", label: "Lists", icon: faListCheck },
   { href: "/archive", label: "Archive", icon: faBoxArchive },
   { href: "/settings", label: "Settings", icon: faGear },

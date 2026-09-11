@@ -73,12 +73,11 @@ export interface Repair {
 export interface Receipt {
   id: string;
   source_type: "csv" | "image" | "manual" | "pdf";
-  source: string | null; // "eBay", "Goodwill", "ShopGoodwill", or free text
+  source: string | null;
   file_url: string | null;
   receipt_date: string | null;
   created_at: string;
-  // Only set when source_type === "csv" — parallel arrays (not
-  // array-of-objects) so column order survives the JSON round-trip.
+  archived_at: string | null;
   csv_headers: string[] | null;
   csv_rows: string[][] | null;
 }
