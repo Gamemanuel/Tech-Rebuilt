@@ -106,7 +106,7 @@ export function PartsInventory({
 
             <div className="space-y-3">
                 {groups.map((group) => (
-                    <div key={group.description.toLowerCase()} className="rounded-lg border border-border">
+                    <div key={group.description.toLowerCase()} className="rounded-lg border border-border overflow-hidden">
                         <div className="flex items-center justify-between border-b border-border bg-muted px-4 py-2">
                             <p className="text-sm font-medium">{group.description}</p>
                             <p className="font-mono text-xs text-muted-foreground">
