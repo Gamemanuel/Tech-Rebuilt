@@ -1,4 +1,4 @@
-import { ReceiptBundle, ReceiptItem, ResolvedReceiptItem, UnitWithFinancials } from "./types";
+import {ReceiptBundle, ReceiptItem, Repair, ResolvedReceiptItem, UnitWithFinancials} from "./types";
 
 /**
  * All amounts are integer cents in, integer cents out.
@@ -52,20 +52,14 @@ export function resolveItemCosts(
   }));
 }
 
-export interface UnitCostBreakdown {
-  itemsCents: number; // every receipt item (product/part/accessory) attached to this unit
-  laborCents: number;
-  returnShippingCents: number;
-  totalCostCents: number;
+export function repairLaborCents(repair: Pick<Repair, "labor_hours" | "labor_rate_cents">): number {
+  return Math.round(repair.labor_hours * repair.labor_rate_cents);
 }
 
 export function computeUnitCost(unit: UnitWithFinancials): UnitCostBreakdown {
   const itemsCents = unit.receipt_items.reduce((sum, item) => sum + item.resolvedCostCents, 0);
 
-  const laborCents = unit.repairs.reduce(
-    (sum, repair) => sum + Math.round(repair.labor_hours * repair.labor_rate_cents),
-    0
-  );
+  const laborCents = unit.repairs.reduce((sum, repair) => sum + repairLaborCents(repair), 0);
 
   const returnShippingCents = unit.returns.reduce((sum, r) => sum + r.return_shipping_cents, 0);
 
@@ -75,6 +69,13 @@ export function computeUnitCost(unit: UnitWithFinancials): UnitCostBreakdown {
     returnShippingCents,
     totalCostCents: itemsCents + laborCents + returnShippingCents,
   };
+}
+
+export interface UnitCostBreakdown {
+  itemsCents: number; // every receipt item (product/part/accessory) attached to this unit
+  laborCents: number;
+  returnShippingCents: number;
+  totalCostCents: number;
 }
 
 export interface MarginResult {
