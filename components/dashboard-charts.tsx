@@ -37,36 +37,36 @@ export function DashboardCharts({
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-sm">Avg profit by product</CardTitle>
-        </CardHeader>
-        <CardContent className="h-64">
-          {productMargins.length === 0 ? (
-            <p className="flex h-full items-center justify-center text-sm text-muted-foreground">
-              Sell a few units to see this fill in.
-            </p>
-          ) : (
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={productMargins} layout="vertical" margin={{ left: 24 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                <XAxis
-                  type="number"
-                  stroke="hsl(var(--muted-foreground))"
-                  fontSize={12}
-                  tickFormatter={(v) => `$${(v / 100).toFixed(0)}`}
-                />
-                <YAxis type="category" dataKey="model" stroke="hsl(var(--muted-foreground))" fontSize={12} width={120} />
-                <Tooltip
-                  formatter={(value: number) => formatCurrency(value)}
-                  contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8 }}
-                />
-                <Bar dataKey="avgProfitCents" fill="hsl(var(--secondary))" radius={[0, 4, 4, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          )}
-        </CardContent>
-      </Card>
+      {/*<Card>*/}
+      {/*  <CardHeader>*/}
+      {/*    <CardTitle className="text-sm">Avg profit by product</CardTitle>*/}
+      {/*  </CardHeader>*/}
+      {/*  <CardContent className="h-64">*/}
+      {/*    {productMargins.length === 0 ? (*/}
+      {/*      <p className="flex h-full items-center justify-center text-sm text-muted-foreground">*/}
+      {/*        Sell a few units to see this fill in.*/}
+      {/*      </p>*/}
+      {/*    ) : (*/}
+      {/*      <ResponsiveContainer width="100%" height="100%">*/}
+      {/*        <BarChart data={productMargins} layout="vertical" margin={{ left: 24 }}>*/}
+      {/*          <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />*/}
+      {/*          <XAxis*/}
+      {/*            type="number"*/}
+      {/*            stroke="hsl(var(--muted-foreground))"*/}
+      {/*            fontSize={12}*/}
+      {/*            tickFormatter={(v) => `$${(v / 100).toFixed(0)}`}*/}
+      {/*          />*/}
+      {/*          <YAxis type="category" dataKey="model" stroke="hsl(var(--muted-foreground))" fontSize={12} width={120} />*/}
+      {/*          <Tooltip*/}
+      {/*            formatter={(value: number) => formatCurrency(value)}*/}
+      {/*            contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8 }}*/}
+      {/*          />*/}
+      {/*          <Bar dataKey="avgProfitCents" fill="hsl(var(--secondary))" radius={[0, 4, 4, 0]} />*/}
+      {/*        </BarChart>*/}
+      {/*      </ResponsiveContainer>*/}
+      {/*    )}*/}
+      {/*  </CardContent>*/}
+      {/*</Card>*/}
     </div>
   );
 }
